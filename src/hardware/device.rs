@@ -6,6 +6,7 @@ pub fn get_device_model() -> Option<String> {
     let mut result: String = String::new();
     let mut brand: String;
     let model: String;
+
     if Path::new("/system/app").exists() && Path::new("/system/priv-app").exists() {
         brand = String::from_utf8(
             Command::new("getprop")
@@ -36,7 +37,7 @@ pub fn get_device_model() -> Option<String> {
         model = fs::read_to_string("/sys/devices/virtual/dmi/id/product_name").unwrap();
         let version = fs::read_to_string("/sys/devices/virtual/dmi/id/product_version").unwrap();
 
-        result = format!("{brand} {version} {model}");
+        result = format!("{brand} {model} {version}");
     } else if Path::new("/sys/devices/virtual/dmi/id/product_name").exists()
         && Path::new("/sys/devices/virtual/dmi/id/product_version").exists()
     {

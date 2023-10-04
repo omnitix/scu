@@ -3,6 +3,7 @@ mod hardware;
 pub mod pci_ids;
 mod software;
 
+mod logo;
 mod utils;
 
 use std::collections::BTreeMap;
@@ -353,18 +354,70 @@ fn print_info() {
 
     let max_len = get_map_max_len(info.clone());
     let mut to_display: Vec<String> = Vec::new();
+
+    let distro_name = software::os::get_name();
+    // TODO More logos
+    let is_supported_logo = distro_name.trim().to_lowercase().contains("arch")
+        || distro_name.trim().to_lowercase().contains("ubuntu");
+
+    let logo_lines: Vec<String> = if is_supported_logo {
+        if distro_name.trim().to_lowercase().contains("arch") {
+            logo::ARCH_LOGO
+                .trim()
+                .lines()
+                .map(|line| line.to_string())
+                .collect()
+        } else {
+            logo::UBUNTU_LOGO
+                .trim()
+                .lines()
+                .map(|line| line.to_string())
+                .collect()
+        }
+    } else {
+        Vec::new()
+    };
+    let logo_max_len = get_max_len(logo_lines.clone());
+    let logo_width = logo_max_len + 2;
+
+    let total_width = max_len + 2;
+
+    let (padding_before, padding_after) = if is_supported_logo {
+        let padding_before = (total_width - logo_width) / 2;
+        let padding_after = total_width - logo_width - padding_before;
+        (padding_before, padding_after)
+    } else {
+        (0, 0)
+    };
+
+    to_display.push(format!("┌{}┐", "─".repeat(total_width)));
+
+    if is_supported_logo {
+        for line in 0..logo_lines.len() {
+            let logo_line = format!(
+                "│ {}{}{} │",
+                " ".repeat(padding_before),
+                logo_lines[line],
+                " ".repeat(padding_after)
+            );
+            to_display.push(logo_line);
+        }
+
+        to_display.push(format!("├{}┤", "─".repeat(total_width)));
+    }
+
     for category in info.keys().rev() {
         to_display.push(format!(
             "{}─┤ {} ├{}{}",
             if Some(category) == info.keys().next_back() {
-                "┌"
+                "├"
             } else {
                 "├"
             },
             category,
             "─".repeat(max_len - get_len(category) - 3),
             if Some(category) == info.keys().next_back() {
-                "┐"
+                "┤"
             } else {
                 "┤"
             }
@@ -372,63 +425,16 @@ fn print_info() {
         info.get(category.as_str())
             .unwrap()
             .iter()
-            .for_each(|line| {
+            .for_each(|info_line| {
                 to_display.push(format!(
                     "│ {}{}│",
-                    line,
-                    " ".repeat(max_len - get_len(line) + 1)
+                    info_line,
+                    " ".repeat(max_len - get_len(info_line) + 1)
                 ))
             });
     }
-    to_display.push(format!("└{}┘", "─".repeat(max_len + 2)));
 
-    let mut distro_name = software::os::get_name();
-    if distro_name == "Unknown" {
-        distro_name = "Linux".to_string();
-    }
-    let logo_lines: Vec<String> = utils::ascii_art::generate(&distro_name);
-    let logo_max_len = get_max_len(logo_lines.clone());
-    if software::terminal::get_size().unwrap().width > max_len + logo_max_len + 3_usize
-        && to_display.len() >= logo_lines.len() + 3
-    {
-        let _logo_box_height = logo_lines.len() + 2;
-        for line in 0..to_display.len() {
-            if line == 0 || line == _logo_box_height - 1 {
-                let info_box_frame_element = to_display[line].pop().unwrap();
-                to_display[line].push_str(match info_box_frame_element {
-                    '┐' => "┬",
-                    '│' => "├",
-                    '┤' => "┼",
-                    '┘' => "┴",
-                    _ => "",
-                });
-                to_display[line].push_str(&format!(
-                    "{}{}",
-                    "─".repeat(logo_max_len + 2),
-                    match line {
-                        0 => "┐",
-                        _logo_box_height => "┘",
-                    }
-                ));
-            }
-            if line > 0 && line - 1 < logo_lines.len() {
-                let color = utils::distro_colors::get_color(&distro_name);
-                let colorized_line = match color {
-                    Some(color) => {
-                        colorize_background(&logo_lines[line - 1], color.r, color.g, color.b)
-                    }
-                    _ => logo_lines[line - 1].to_string(),
-                };
-                to_display[line].push_str(&format!(
-                    " {}{} │",
-                    colorized_line,
-                    " ".repeat(logo_max_len - get_len(&logo_lines[line - 1].to_string()))
-                ));
-            }
-        }
-    }
-
-    // Display info
+    to_display.push(format!("└{}┘", "─".repeat(total_width)));
     to_display.iter().for_each(|info_line| {
         println!("{}", info_line);
     });
