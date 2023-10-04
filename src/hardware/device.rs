@@ -36,7 +36,7 @@ pub fn get_device_model() -> Option<String> {
         model = fs::read_to_string("/sys/devices/virtual/dmi/id/product_name").unwrap();
         let version = fs::read_to_string("/sys/devices/virtual/dmi/id/product_version").unwrap();
 
-        result = format!("{brand} {model} {version}");
+        result = format!("{brand} {version} {model}");
     } else if Path::new("/sys/devices/virtual/dmi/id/product_name").exists()
         && Path::new("/sys/devices/virtual/dmi/id/product_version").exists()
     {
